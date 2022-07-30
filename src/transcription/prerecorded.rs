@@ -1,22 +1,21 @@
-//! Provides various types that are used for pre-recorded transcription requests to Deepgram.
+//! Types used for pre-recorded audio transcription.
+//!
+//! See the [Deepgram API Reference][api] for more info.
+//!
+//! [api]: https://developers.deepgram.com/api-reference/#transcription-prerecorded
 
-use super::Transcription;
-use crate::DeepgramError;
 use reqwest::RequestBuilder;
 
-mod audio_source;
-mod options;
-mod response;
+use super::Transcription;
+use crate::send_and_translate_response;
 
-pub use audio_source::{AudioSource, BufferSource, UrlSource};
-pub use options::{Keyword, Language, Model, Options, OptionsBuilder, Redact};
-pub use response::{
-    CallbackResponse, ChannelResult, Hit, ListenMetadata, ListenResults, Response,
-    ResultAlternative, SearchResults, Utterance, Word,
-};
+pub mod audio_source;
+pub mod options;
+pub mod response;
 
-use options::SerializableOptions;
-use serde::de::DeserializeOwned;
+use audio_source::AudioSource;
+use options::{Options, SerializableOptions};
+use response::{CallbackResponse, Response};
 
 static DEEPGRAM_API_URL_LISTEN: &str = "https://api.deepgram.com/v1/listen";
 
@@ -31,11 +30,15 @@ impl<K: AsRef<str>> Transcription<'_, K> {
     /// # Examples
     ///
     /// ```no_run
+    /// # use std::env;
+    /// #
     /// # use deepgram::{
-    /// #     transcription::prerecorded::{Language, Options, UrlSource},
+    /// #     transcription::prerecorded::{
+    /// #         audio_source::UrlSource,
+    /// #         options::{Language, Options},
+    /// #     },
     /// #     Deepgram, DeepgramError,
     /// # };
-    /// # use std::env;
     /// #
     /// # static AUDIO_URL: &str = "https://static.deepgram.com/examples/Bueller-Life-moves-pretty-fast.wav";
     /// #
@@ -81,11 +84,15 @@ impl<K: AsRef<str>> Transcription<'_, K> {
     /// # Examples
     ///
     /// ```no_run
+    /// # use std::env;
+    /// #
     /// # use deepgram::{
-    /// #     transcription::prerecorded::{Language, Options, UrlSource},
+    /// #     transcription::prerecorded::{
+    /// #         audio_source::UrlSource,
+    /// #         options::{Language, Options},
+    /// #     },
     /// #     Deepgram, DeepgramError,
     /// # };
-    /// # use std::env;
     /// #
     /// # static AUDIO_URL: &str = "https://static.deepgram.com/examples/Bueller-Life-moves-pretty-fast.wav";
     /// #
@@ -136,11 +143,16 @@ impl<K: AsRef<str>> Transcription<'_, K> {
     /// # Examples
     ///
     /// ```no_run
-    /// # use deepgram::{
-    /// #     transcription::prerecorded::{Language, Options, Response, UrlSource},
-    /// #     Deepgram,
-    /// # };
     /// # use std::env;
+    /// #
+    /// # use deepgram::{
+    /// #     transcription::prerecorded::{
+    /// #         audio_source::UrlSource,
+    /// #         options::{Language, Options},
+    /// #         response::Response,
+    /// #     },
+    /// #     Deepgram, DeepgramError,
+    /// # };
     /// #
     /// # static AUDIO_URL: &str = "https://static.deepgram.com/examples/Bueller-Life-moves-pretty-fast.wav";
     /// #
@@ -182,10 +194,6 @@ impl<K: AsRef<str>> Transcription<'_, K> {
             .0
             .client
             .post(DEEPGRAM_API_URL_LISTEN)
-            .header(
-                "Authorization",
-                format!("Token {}", self.0.api_key.as_ref()),
-            )
             .query(&SerializableOptions(options));
 
         source.fill_body(request_builder)
@@ -201,11 +209,16 @@ impl<K: AsRef<str>> Transcription<'_, K> {
     /// # Examples
     ///
     /// ```no_run
-    /// # use deepgram::{
-    /// #     transcription::prerecorded::{CallbackResponse, Language, Options, UrlSource},
-    /// #     Deepgram,
-    /// # };
     /// # use std::env;
+    /// #
+    /// # use deepgram::{
+    /// #     transcription::prerecorded::{
+    /// #         audio_source::UrlSource,
+    /// #         options::{Language, Options},
+    /// #         response::CallbackResponse,
+    /// #     },
+    /// #     Deepgram, DeepgramError,
+    /// # };
     /// #
     /// # static AUDIO_URL: &str = "https://static.deepgram.com/examples/Bueller-Life-moves-pretty-fast.wav";
     /// #
@@ -251,19 +264,5 @@ impl<K: AsRef<str>> Transcription<'_, K> {
     ) -> RequestBuilder {
         self.make_prerecorded_request_builder(source, options)
             .query(&[("callback", callback)])
-    }
-}
-
-async fn send_and_translate_response<R: DeserializeOwned>(
-    request_builder: RequestBuilder,
-) -> crate::Result<R> {
-    let response = request_builder.send().await?;
-
-    match response.error_for_status_ref() {
-        Ok(_) => Ok(response.json().await?),
-        Err(err) => Err(DeepgramError::TranscriptionError {
-            body: response.text().await?,
-            err,
-        }),
     }
 }
