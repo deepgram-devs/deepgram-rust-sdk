@@ -20,23 +20,23 @@ use response::Message;
 ///
 /// [api]: https://developers.deepgram.com/api-reference/#scopes
 #[derive(Debug, Clone)]
-pub struct Scopes<'a, K: AsRef<str>>(&'a Deepgram<K>);
+pub struct Scopes<'a>(&'a Deepgram);
 
-impl<'a, K: AsRef<str>> Deepgram<K> {
+impl<'a> Deepgram {
     /// Construct a new [`Scopes`] from a [`Deepgram`].
-    pub fn scopes(&'a self) -> Scopes<'a, K> {
+    pub fn scopes(&'a self) -> Scopes<'a> {
         self.into()
     }
 }
 
-impl<'a, K: AsRef<str>> From<&'a Deepgram<K>> for Scopes<'a, K> {
+impl<'a> From<&'a Deepgram> for Scopes<'a> {
     /// Construct a new [`Scopes`] from a [`Deepgram`].
-    fn from(deepgram: &'a Deepgram<K>) -> Self {
+    fn from(deepgram: &'a Deepgram) -> Self {
         Self(deepgram)
     }
 }
 
-impl<K: AsRef<str>> Scopes<'_, K> {
+impl Scopes<'_> {
     /// Get the specified project scopes assigned to the specified member.
     ///
     /// See the [Deepgram API Reference][api] for more info.
@@ -61,7 +61,7 @@ impl<K: AsRef<str>> Scopes<'_, K> {
     /// # let member_id =
     /// #     env::var("DEEPGRAM_MEMBER_ID").expect("DEEPGRAM_MEMBER_ID environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// let scopes = dg_client
     ///     .scopes()
@@ -108,7 +108,7 @@ impl<K: AsRef<str>> Scopes<'_, K> {
     /// # let member_id =
     /// #     env::var("DEEPGRAM_MEMBER_ID").expect("DEEPGRAM_MEMBER_ID environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// dg_client
     ///     .scopes()

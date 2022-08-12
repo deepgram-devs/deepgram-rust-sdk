@@ -21,23 +21,23 @@ use response::{Fields, Request, Requests, UsageSummary};
 ///
 /// [api]: https://developers.deepgram.com/api-reference/#usage
 #[derive(Debug, Clone)]
-pub struct Usage<'a, K: AsRef<str>>(&'a Deepgram<K>);
+pub struct Usage<'a>(&'a Deepgram);
 
-impl<'a, K: AsRef<str>> Deepgram<K> {
+impl<'a> Deepgram {
     /// Construct a new [`Usage`] from a [`Deepgram`].
-    pub fn usage(&'a self) -> Usage<'a, K> {
+    pub fn usage(&'a self) -> Usage<'a> {
         self.into()
     }
 }
 
-impl<'a, K: AsRef<str>> From<&'a Deepgram<K>> for Usage<'a, K> {
+impl<'a> From<&'a Deepgram> for Usage<'a> {
     /// Construct a new [`Usage`] from a [`Deepgram`].
-    fn from(deepgram: &'a Deepgram<K>) -> Self {
+    fn from(deepgram: &'a Deepgram) -> Self {
         Self(deepgram)
     }
 }
 
-impl<'a, K: AsRef<str>> Usage<'_, K> {
+impl<'a> Usage<'_> {
     /// Get all requests sent to the Deepgram API for the specified project.
     ///
     /// See the [Deepgram API Reference][api] for more info.
@@ -62,7 +62,7 @@ impl<'a, K: AsRef<str>> Usage<'_, K> {
     /// # let project_id =
     /// #     env::var("DEEPGRAM_PROJECT_ID").expect("DEEPGRAM_PROJECT_ID environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// let options = list_requests_options::Options::builder().build();
     /// let requests = dg_client
@@ -118,7 +118,7 @@ impl<'a, K: AsRef<str>> Usage<'_, K> {
     /// # let request_id =
     /// #     env::var("DEEPGRAM_REQUEST_ID").expect("DEEPGRAM_REQUEST_ID environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// let request = dg_client
     ///     .usage()
@@ -161,7 +161,7 @@ impl<'a, K: AsRef<str>> Usage<'_, K> {
     /// # let project_id =
     /// #     env::var("DEEPGRAM_PROJECT_ID").expect("DEEPGRAM_PROJECT_ID environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// let options = get_usage_options::Options::builder().build();
     /// let summary = dg_client
@@ -211,7 +211,7 @@ impl<'a, K: AsRef<str>> Usage<'_, K> {
     /// # let project_id =
     /// #     env::var("DEEPGRAM_PROJECT_ID").expect("DEEPGRAM_PROJECT_ID environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// let options = get_fields_options::Options::builder().build();
     /// let summary = dg_client

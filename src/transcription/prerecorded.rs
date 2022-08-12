@@ -19,7 +19,7 @@ use response::{CallbackResponse, Response};
 
 static DEEPGRAM_API_URL_LISTEN: &str = "https://api.deepgram.com/v1/listen";
 
-impl<K: AsRef<str>> Transcription<'_, K> {
+impl Transcription<'_> {
     /// Sends a request to Deepgram to transcribe pre-recorded audio.
     /// If you wish to use the Callback feature, you should use [`Transcription::prerecorded_callback`] instead.
     ///
@@ -47,7 +47,7 @@ impl<K: AsRef<str>> Transcription<'_, K> {
     /// # let deepgram_api_key =
     /// #     env::var("DEEPGRAM_API_KEY").expect("DEEPGRAM_API_KEY environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// let source = AudioSource::from_url(AUDIO_URL);
     ///
@@ -101,7 +101,7 @@ impl<K: AsRef<str>> Transcription<'_, K> {
     /// # let deepgram_api_key =
     /// #     env::var("DEEPGRAM_API_KEY").expect("DEEPGRAM_API_KEY environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// let source = AudioSource::from_url(AUDIO_URL);
     ///
@@ -157,12 +157,12 @@ impl<K: AsRef<str>> Transcription<'_, K> {
     /// # static AUDIO_URL: &str = "https://static.deepgram.com/examples/Bueller-Life-moves-pretty-fast.wav";
     /// #
     /// # #[tokio::main]
-    /// # async fn main() -> reqwest::Result<()> {
+    /// # async fn main() -> Result<(), DeepgramError> {
     /// #
     /// # let deepgram_api_key =
     /// #     env::var("DEEPGRAM_API_KEY").expect("DEEPGRAM_API_KEY environmental variable");
     /// #
-    /// # let dg_client = Deepgram::new(&deepgram_api_key);
+    /// # let dg_client = Deepgram::new(&deepgram_api_key)?;
     /// #
     /// # let source = AudioSource::from_url(AUDIO_URL);
     /// #
@@ -225,12 +225,12 @@ impl<K: AsRef<str>> Transcription<'_, K> {
     /// # static AUDIO_URL: &str = "https://static.deepgram.com/examples/Bueller-Life-moves-pretty-fast.wav";
     /// #
     /// # #[tokio::main]
-    /// # async fn main() -> reqwest::Result<()> {
+    /// # async fn main() -> Result<(), DeepgramError> {
     /// #
     /// # let deepgram_api_key =
     /// #     env::var("DEEPGRAM_API_KEY").expect("DEEPGRAM_API_KEY environmental variable");
     /// #
-    /// # let dg_client = Deepgram::new(&deepgram_api_key);
+    /// # let dg_client = Deepgram::new(&deepgram_api_key)?;
     /// #
     /// # let source = AudioSource::from_url(AUDIO_URL);
     /// #

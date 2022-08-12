@@ -23,23 +23,23 @@ use response::{Message, Project};
 /// [console]: https://console.deepgram.com/
 /// [api]: https://developers.deepgram.com/api-reference/#projects
 #[derive(Debug, Clone)]
-pub struct Projects<'a, K: AsRef<str>>(&'a Deepgram<K>);
+pub struct Projects<'a>(&'a Deepgram);
 
-impl<'a, K: AsRef<str>> Deepgram<K> {
+impl<'a> Deepgram {
     /// Construct a new [`Projects`] from a [`Deepgram`].
-    pub fn projects(&'a self) -> Projects<'a, K> {
+    pub fn projects(&'a self) -> Projects<'a> {
         self.into()
     }
 }
 
-impl<'a, K: AsRef<str>> From<&'a Deepgram<K>> for Projects<'a, K> {
+impl<'a> From<&'a Deepgram> for Projects<'a> {
     /// Construct a new [`Projects`] from a [`Deepgram`].
-    fn from(deepgram: &'a Deepgram<K>) -> Self {
+    fn from(deepgram: &'a Deepgram) -> Self {
         Self(deepgram)
     }
 }
 
-impl<'a, K: AsRef<str>> Projects<'_, K> {
+impl<'a> Projects<'_> {
     /// Get all projects.
     ///
     /// See the [Deepgram API Reference][api] for more info.
@@ -58,7 +58,7 @@ impl<'a, K: AsRef<str>> Projects<'_, K> {
     /// # let deepgram_api_key =
     /// #     env::var("DEEPGRAM_API_KEY").expect("DEEPGRAM_API_KEY environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// let projects = dg_client
     ///     .projects()
@@ -95,7 +95,7 @@ impl<'a, K: AsRef<str>> Projects<'_, K> {
     /// # let project_id =
     /// #     env::var("DEEPGRAM_PROJECT_ID").expect("DEEPGRAM_PROJECT_ID environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// let project = dg_client
     ///     .projects()
@@ -132,7 +132,7 @@ impl<'a, K: AsRef<str>> Projects<'_, K> {
     /// # let project_id =
     /// #     env::var("DEEPGRAM_PROJECT_ID").expect("DEEPGRAM_PROJECT_ID environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// let options = Options::builder()
     ///     .name("The Transcribinator")
@@ -179,7 +179,7 @@ impl<'a, K: AsRef<str>> Projects<'_, K> {
     /// # let project_id =
     /// #     env::var("DEEPGRAM_PROJECT_ID").expect("DEEPGRAM_PROJECT_ID environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// dg_client
     ///     .projects()

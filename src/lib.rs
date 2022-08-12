@@ -1,19 +1,23 @@
 #![forbid(unsafe_code)]
-#![warn(missing_debug_implementations, missing_docs, clippy::cargo)]
-#![allow(clippy::multiple_crate_versions)]
+#![warn(
+    missing_debug_implementations,
+    missing_docs,
+    clippy::cargo,
+    clippy::missing_errors_doc
+)]
+#![allow(clippy::multiple_crate_versions, clippy::derive_partial_eq_without_eq)]
 
 //! Official Rust SDK for Deepgram's automated speech recognition APIs.
 //!
 //! Get started transcribing with a [`Transcription`](transcription::Transcription) object.
 
-use std::io;
-
 use reqwest::{
-    header::{HeaderMap, HeaderValue},
+    header::{HeaderMap, HeaderValue, InvalidHeaderValue},
     RequestBuilder,
 };
 use serde::de::DeserializeOwned;
 use thiserror::Error;
+use tokio_tungstenite::tungstenite::{self, protocol::CloseFrame};
 
 pub mod billing;
 pub mod invitations;
@@ -30,11 +34,8 @@ mod response;
 ///
 /// Make transcriptions requests using [`Deepgram::transcription`].
 #[derive(Debug, Clone)]
-pub struct Deepgram<K>
-where
-    K: AsRef<str>,
-{
-    api_key: K,
+pub struct Deepgram {
+    api_key_header: HeaderValue,
     client: reqwest::Client,
 }
 
@@ -42,9 +43,11 @@ where
 // TODO sub-errors for the different types?
 #[derive(Debug, Error)]
 pub enum DeepgramError {
-    /// No source was provided to the request builder.
-    #[error("No source was provided to the request builder.")]
-    NoSource,
+    /// The provided API key contains invalid characters.
+    ///
+    /// See the [this doc page][reqwest::header::HeaderValue::from_str] for more info.
+    #[error("The provided API key contains invalid characters.")]
+    InvalidApiKey(InvalidHeaderValue),
 
     /// The Deepgram API returned an error.
     #[error("The Deepgram API returned an error.")]
@@ -56,17 +59,17 @@ pub enum DeepgramError {
         err: reqwest::Error,
     },
 
-    /// Something went wrong when generating the http request.
-    #[error("Something went wrong when generating the http request: {0}")]
-    HttpError(#[from] http::Error),
+    /// A problem occurred when transcribing the live audio stream.
+    ///
+    /// See the [Deepgram API Reference][api] for more info.
+    ///
+    /// [api]: https://developers.deepgram.com/api-reference/#error-handling-str
+    #[error("A problem occurred when transcribing the live audio stream.")]
+    DeepgramLiveError(CloseFrame<'static>),
 
     /// Something went wrong when making the HTTP request.
     #[error("Something went wrong when making the HTTP request: {0}")]
     ReqwestError(#[from] reqwest::Error),
-
-    /// Something went wrong during I/O.
-    #[error("Something went wrong during I/O: {0}")]
-    IoError(#[from] io::Error),
 
     /// Something went wrong with WS.
     #[error("Something went wrong with WS: {0}")]
@@ -79,20 +82,23 @@ pub enum DeepgramError {
 
 type Result<T> = std::result::Result<T, DeepgramError>;
 
-impl<K> Deepgram<K>
-where
-    K: AsRef<str>,
-{
+impl Deepgram {
     /// Construct a new Deepgram client.
     ///
     /// Create your first API key on the [Deepgram Console][console].
     ///
     /// [console]: https://console.deepgram.com/
     ///
+    /// # Errors
+    ///
+    /// Returns a [`DeepgramError::InvalidApiKey`] if the API key contains invalid characters.
+    /// This doesn't guarantee that the API key will be correct, just that it's doesn't contain invalid characters.
+    /// See the [this doc page][reqwest::header::HeaderValue::from_str] for more info.
+    ///
     /// # Panics
     ///
     /// Panics under the same conditions as [`reqwest::Client::new`].
-    pub fn new(api_key: K) -> Self {
+    pub fn new(api_key: &str) -> crate::Result<Self> {
         static USER_AGENT: &str = concat!(
             env!("CARGO_PKG_NAME"),
             "/",
@@ -100,25 +106,24 @@ where
             " rust",
         );
 
+        let api_key_header = HeaderValue::from_str(&format!("Token {}", api_key))
+            .map_err(DeepgramError::InvalidApiKey)?;
+
         let authorization_header = {
             let mut header = HeaderMap::new();
-            header.insert(
-                "Authorization",
-                HeaderValue::from_str(&format!("Token {}", api_key.as_ref()))
-                    .expect("Invalid API key"),
-            );
+            header.insert("Authorization", api_key_header.clone());
             header
         };
 
-        Deepgram {
-            api_key,
+        Ok(Deepgram {
+            api_key_header,
             client: reqwest::Client::builder()
                 .user_agent(USER_AGENT)
                 .default_headers(authorization_header)
                 .build()
                 // Even though `reqwest::Client::new` is not used here, it will always panic under the same conditions
                 .expect("See reqwest::Client::new docs for cause of panic"),
-        }
+        })
     }
 }
 

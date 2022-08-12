@@ -20,23 +20,23 @@ use response::{MemberAndApiKey, MembersAndApiKeys, Message, NewApiKey};
 ///
 /// [api]: https://developers.deepgram.com/api-reference/#keys
 #[derive(Debug, Clone)]
-pub struct Keys<'a, K: AsRef<str>>(&'a Deepgram<K>);
+pub struct Keys<'a>(&'a Deepgram);
 
-impl<'a, K: AsRef<str>> Deepgram<K> {
+impl<'a> Deepgram {
     /// Construct a new [`Keys`] from a [`Deepgram`].
-    pub fn keys(&'a self) -> Keys<'a, K> {
+    pub fn keys(&'a self) -> Keys<'a> {
         self.into()
     }
 }
 
-impl<'a, K: AsRef<str>> From<&'a Deepgram<K>> for Keys<'a, K> {
+impl<'a> From<&'a Deepgram> for Keys<'a> {
     /// Construct a new [`Keys`] from a [`Deepgram`].
-    fn from(deepgram: &'a Deepgram<K>) -> Self {
+    fn from(deepgram: &'a Deepgram) -> Self {
         Self(deepgram)
     }
 }
 
-impl<'a, K: AsRef<str>> Keys<'_, K> {
+impl<'a> Keys<'_> {
     /// Get keys for the specified project.
     ///
     /// See the [Deepgram API Reference][api] for more info.
@@ -58,7 +58,7 @@ impl<'a, K: AsRef<str>> Keys<'_, K> {
     /// # let project_id =
     /// #     env::var("DEEPGRAM_PROJECT_ID").expect("DEEPGRAM_PROJECT_ID environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// let keys = dg_client
     ///     .keys()
@@ -97,7 +97,7 @@ impl<'a, K: AsRef<str>> Keys<'_, K> {
     /// #
     /// # let key_id = env::var("DEEPGRAM_KEY_ID").expect("DEEPGRAM_KEY_ID environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// let key = dg_client
     ///     .keys()
@@ -139,7 +139,7 @@ impl<'a, K: AsRef<str>> Keys<'_, K> {
     /// #
     /// # let key_id = env::var("DEEPGRAM_KEY_ID").expect("DEEPGRAM_KEY_ID environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// let options = Options::builder("New Key", ["member"]).build();
     /// let new_key = dg_client
@@ -184,7 +184,7 @@ impl<'a, K: AsRef<str>> Keys<'_, K> {
     /// #
     /// # let key_id = env::var("DEEPGRAM_KEY_ID").expect("DEEPGRAM_KEY_ID environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// dg_client
     ///     .keys()

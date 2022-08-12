@@ -16,23 +16,23 @@ pub mod response;
 ///
 /// [api]: https://developers.deepgram.com/api-reference/#members
 #[derive(Debug, Clone)]
-pub struct Members<'a, K: AsRef<str>>(&'a Deepgram<K>);
+pub struct Members<'a>(&'a Deepgram);
 
-impl<'a, K: AsRef<str>> Deepgram<K> {
+impl<'a> Deepgram {
     /// Construct a new [`Members`] from a [`Deepgram`].
-    pub fn members(&'a self) -> Members<'a, K> {
+    pub fn members(&'a self) -> Members<'a> {
         self.into()
     }
 }
 
-impl<'a, K: AsRef<str>> From<&'a Deepgram<K>> for Members<'a, K> {
+impl<'a> From<&'a Deepgram> for Members<'a> {
     /// Construct a new [`Members`] from a [`Deepgram`].
-    fn from(deepgram: &'a Deepgram<K>) -> Self {
+    fn from(deepgram: &'a Deepgram) -> Self {
         Self(deepgram)
     }
 }
 
-impl<K: AsRef<str>> Members<'_, K> {
+impl Members<'_> {
     /// Get all members of the specified project.
     ///
     /// See the [Deepgram API Reference][api] for more info.
@@ -54,7 +54,7 @@ impl<K: AsRef<str>> Members<'_, K> {
     /// # let project_id =
     /// #     env::var("DEEPGRAM_PROJECT_ID").expect("DEEPGRAM_PROJECT_ID environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// let members = dg_client
     ///     .members()
@@ -97,7 +97,7 @@ impl<K: AsRef<str>> Members<'_, K> {
     /// # let member_id =
     /// #     env::var("DEEPGRAM_MEMBER_ID").expect("DEEPGRAM_MEMBER_ID environmental variable");
     /// #
-    /// let dg_client = Deepgram::new(&deepgram_api_key);
+    /// let dg_client = Deepgram::new(&deepgram_api_key)?;
     ///
     /// dg_client
     ///     .members()

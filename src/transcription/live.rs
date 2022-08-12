@@ -1,298 +1,173 @@
-// TODO: Remove this lint
-// Currently not documented because interface of this module is still changing
-#![allow(missing_docs)]
-
 //! Types used for live audio transcription.
 //!
 //! See the [Deepgram API Reference][api] for more info.
 //!
 //! [api]: https://developers.deepgram.com/api-reference/#transcription-streaming
 
-use std::path::Path;
+// TODO: Fix the docs in this module (and submodules)
+
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use std::time::Duration;
 
-use bytes::{Bytes, BytesMut};
-use futures::channel::mpsc::{self, Receiver};
-use futures::stream::StreamExt;
-use futures::{SinkExt, Stream};
-use http::Request;
-use pin_project::pin_project;
-use serde::Deserialize;
-use tokio::fs::File;
-use tokio_tungstenite::tungstenite::protocol::Message;
-use tokio_util::io::ReaderStream;
-use tungstenite::handshake::client;
-use url::Url;
-
-use crate::{Deepgram, DeepgramError, Result};
+use futures::{stream::FusedStream, Sink, Stream};
+use futures::{SinkExt, StreamExt};
+use tokio::net::TcpStream;
+use tokio_tungstenite::{
+    connect_async,
+    tungstenite::{
+        client::IntoClientRequest,
+        handshake::client::Request,
+        protocol::{frame::coding::CloseCode, CloseFrame, Message},
+    },
+    MaybeTlsStream, WebSocketStream,
+};
 
 use super::Transcription;
+use crate::DeepgramError;
 
+pub mod options;
+pub mod response;
+
+use options::{Options, SerializableOptions};
+use response::Response;
+
+static DEEPGRAM_API_URL_LISTEN: &str = "wss://api.deepgram.com/v1/listen";
+
+// The traits `futures::{stream::FusedStream, Sink, Stream}` were chosen for `DeepgramLive`
+// because tokio_tungstenite::WebSocketStream implements them, and DeepgramLive is essentially
+// just a wrapper around tokio_tungstenite::WebSocketStream
 #[derive(Debug)]
-pub struct StreamRequestBuilder<'a, S, K, E>
-where
-    S: Stream<Item = std::result::Result<Bytes, E>>,
-    K: AsRef<str>,
-{
-    config: &'a Deepgram<K>,
-    source: Option<S>,
-    encoding: Option<String>,
-    sample_rate: Option<u32>,
-    channels: Option<u16>,
+pub struct DeepgramLive {
+    websocket: WebSocketStream<MaybeTlsStream<TcpStream>>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct Word {
-    pub word: String,
-    pub start: f64,
-    pub end: f64,
-    pub confidence: f64,
-}
+impl Transcription<'_> {
+    pub async fn live(&self, options: &Options) -> crate::Result<DeepgramLive> {
+        let request = self.make_streaming_request(options)?;
 
-#[derive(Debug, Deserialize)]
-pub struct Alternatives {
-    pub transcript: String,
-    pub words: Vec<Word>,
-}
+        let (websocket, _response) = connect_async(request).await?;
 
-#[derive(Debug, Deserialize)]
-pub struct Channel {
-    pub alternatives: Vec<Alternatives>,
-}
+        Ok(DeepgramLive { websocket })
+    }
 
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-pub enum StreamResponse {
-    TranscriptResponse {
-        duration: f64,
-        is_final: bool,
-        channel: Channel,
-    },
-    TerminalResponse {
-        request_id: String,
-        created: String,
-        duration: f64,
-        channels: u32,
-    },
-}
+    fn make_streaming_request(&self, options: &Options) -> crate::Result<Request> {
+        // The reqwest::Request used here is *not* sent
+        // It only exists to build a URL, which is passed to into_client_request
+        // Since only the URL is used, headers aren't set here
+        let mut request = self
+            .0
+            .client
+            .get(DEEPGRAM_API_URL_LISTEN)
+            .query(&SerializableOptions(options))
+            .build()?
+            .url()
+            .into_client_request()?;
 
-#[pin_project]
-struct FileChunker {
-    chunk_size: usize,
-    buf: BytesMut,
-    #[pin]
-    file: ReaderStream<File>,
-}
+        request
+            .headers_mut()
+            .insert("Authorization", self.0.api_key_header.clone());
 
-impl<K: AsRef<str>> Transcription<'_, K> {
-    pub fn stream_request<E, S: Stream<Item = std::result::Result<Bytes, E>>>(
-        &self,
-    ) -> StreamRequestBuilder<S, K, E> {
-        StreamRequestBuilder {
-            config: self.0,
-            source: None,
-            encoding: None,
-            sample_rate: None,
-            channels: None,
-        }
+        Ok(request)
     }
 }
 
-impl FileChunker {
-    fn new(file: File, chunk_size: usize) -> Self {
-        FileChunker {
-            chunk_size,
-            buf: BytesMut::with_capacity(2 * chunk_size),
-            file: ReaderStream::new(file),
-        }
+impl DeepgramLive {
+    pub async fn finish(&mut self) -> crate::Result<()> {
+        Ok(self.websocket.send(Message::binary(Vec::new())).await?)
     }
 }
 
-impl Stream for FileChunker {
-    type Item = Result<Bytes>;
+impl Stream for DeepgramLive {
+    type Item = crate::Result<Response>;
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-        let mut this = self.project();
-
-        while this.buf.len() < *this.chunk_size {
-            match Pin::new(&mut this.file).poll_next(cx) {
-                Poll::Pending => return Poll::Pending,
-                Poll::Ready(next) => match next.transpose() {
-                    Err(e) => return Poll::Ready(Some(Err(DeepgramError::from(e)))),
-                    Ok(None) => {
-                        if this.buf.is_empty() {
-                            return Poll::Ready(None);
-                        } else {
-                            return Poll::Ready(Some(Ok(this
-                                .buf
-                                .split_to(this.buf.len())
-                                .freeze())));
-                        }
-                    }
-                    Ok(Some(next)) => {
-                        this.buf.extend_from_slice(&next);
-                    }
-                },
-            }
-        }
-
-        Poll::Ready(Some(Ok(this.buf.split_to(*this.chunk_size).freeze())))
-    }
-}
-
-impl<'a, S, K, E> StreamRequestBuilder<'a, S, K, E>
-where
-    S: Stream<Item = std::result::Result<Bytes, E>>,
-    K: AsRef<str>,
-{
-    pub fn stream(mut self, stream: S) -> Self {
-        self.source = Some(stream);
-
-        self
-    }
-
-    pub fn encoding(mut self, encoding: String) -> Self {
-        self.encoding = Some(encoding);
-
-        self
-    }
-
-    pub fn sample_rate(mut self, sample_rate: u32) -> Self {
-        self.sample_rate = Some(sample_rate);
-
-        self
-    }
-
-    pub fn channels(mut self, channels: u16) -> Self {
-        self.channels = Some(channels);
-
-        self
-    }
-}
-
-impl<'a, K> StreamRequestBuilder<'a, Receiver<Result<Bytes>>, K, DeepgramError>
-where
-    K: AsRef<str>,
-{
-    pub async fn file(
-        mut self,
-        filename: impl AsRef<Path>,
-        frame_size: usize,
-        frame_delay: Duration,
-    ) -> Result<StreamRequestBuilder<'a, Receiver<Result<Bytes>>, K, DeepgramError>> {
-        let file = File::open(filename).await?;
-        let mut chunker = FileChunker::new(file, frame_size);
-        let (mut tx, rx) = mpsc::channel(1);
-        let task = async move {
-            while let Some(frame) = chunker.next().await {
-                tokio::time::sleep(frame_delay).await;
-                // This unwrap() is safe because application logic dictates that the Receiver won't
-                // be dropped before the Sender.
-                tx.send(frame).await.unwrap();
-            }
-        };
-        tokio::spawn(task);
-
-        self.source = Some(rx);
-        Ok(self)
-    }
-}
-
-impl<S, K, E> StreamRequestBuilder<'_, S, K, E>
-where
-    S: Stream<Item = std::result::Result<Bytes, E>> + Send + Unpin + 'static,
-    K: AsRef<str>,
-    E: Send + std::fmt::Debug,
-{
-    pub async fn start(self) -> Result<Receiver<Result<StreamResponse>>> {
-        let StreamRequestBuilder {
-            config,
-            source,
-            encoding,
-            sample_rate,
-            channels,
-        } = self;
-        let mut source = source
-            .ok_or(DeepgramError::NoSource)?
-            .map(|res| res.map(|bytes| Message::binary(Vec::from(bytes.as_ref()))));
-
-        // This unwrap is safe because we're parsing a static.
-        let mut base = Url::parse("wss://api.deepgram.com/v1/listen").unwrap();
-        let mut pairs = base.query_pairs_mut();
-        if let Some(encoding) = encoding {
-            pairs.append_pair("encoding", &encoding);
-        }
-        if let Some(sample_rate) = sample_rate {
-            pairs.append_pair("sample_rate", &sample_rate.to_string());
-        }
-        if let Some(channels) = channels {
-            pairs.append_pair("channels", &channels.to_string());
-        }
-
-        let request = Request::builder()
-            .method("GET")
-            // TODO Hard-coded.
-            .uri("wss://api.deepgram.com/v1/listen?encoding=linear16&sample_rate=44100&channels=2")
-            .header(
-                "authorization",
-                format!("token {}", config.api_key.as_ref()),
-            )
-            .header("sec-websocket-key", client::generate_key())
-            .header("host", "api.deepgram.com")
-            .header("connection", "upgrade")
-            .header("upgrade", "websocket")
-            .header("sec-websocket-version", "13")
-            .body(())?;
-        let (ws_stream, _) = tokio_tungstenite::connect_async(request).await?;
-        let (mut write, mut read) = ws_stream.split();
-        let (mut tx, rx) = mpsc::channel::<Result<StreamResponse>>(1);
-
-        let send_task = async move {
-            loop {
-                match source.next().await {
-                    None => break,
-                    Some(Ok(frame)) => {
-                        // This unwrap is not safe.
-                        write.send(frame).await.unwrap();
-                    }
-                    Some(e) => {
-                        let _ = dbg!(e);
-                        break;
-                    }
-                }
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        match self.websocket.poll_next_unpin(cx) {
+            // Deserialize the Response
+            Poll::Ready(Some(Ok(Message::Text(message)))) => {
+                let response = serde_json::from_str(&message)?;
+                Poll::Ready(Some(Ok(response)))
             }
 
-            // This unwrap is not safe.
-            write.send(Message::binary([])).await.unwrap();
-        };
-
-        let recv_task = async move {
-            loop {
-                match read.next().await {
-                    None => break,
-                    Some(Ok(msg)) => {
-                        if let Message::Text(txt) = msg {
-                            let resp = serde_json::from_str(&txt).map_err(DeepgramError::from);
-                            tx.send(resp)
-                                .await
-                                // This unwrap is probably not safe.
-                                .unwrap();
-                        }
-                    }
-                    Some(e) => {
-                        let _ = dbg!(e);
-                        break;
-                    }
-                }
+            // I'm pretty sure that Deepgram API doesn't send binary frames,
+            // but it's good to make sure that this case is covered
+            Poll::Ready(Some(Ok(Message::Binary(message)))) => {
+                let response = serde_json::from_slice(&message)?;
+                Poll::Ready(Some(Ok(response)))
             }
-        };
 
-        tokio::spawn(async move {
-            tokio::join!(send_task, recv_task);
-        });
+            // No need to give this message to the user of DeepgramLive
+            // Skip it and poll again
+            //
+            // The tokio_tungstenite::WebSocketStream will automatically
+            // respond to the Ping/Close appropriately when we call poll_next
+            // on it again (as we are doing below).
+            //
+            // It's important to call poll_next again, *even* if we know
+            // that the DeepgramLive stream won't be producing any more values,
+            // because otherwise the tokio_tungstenite::WebSocketStream won't
+            // get a chance to respond to the Ping/Close.
+            Poll::Ready(Some(Ok(
+                Message::Ping(_)
+                | Message::Pong(_)
+                | Message::Close(Some(CloseFrame {
+                    code: CloseCode::Normal,
+                    reason: _,
+                }))
+                | Message::Close(None),
+            ))) => self.poll_next(cx),
 
-        Ok(rx)
+            // Occurs in response errors from Deepgram
+            // https://developers.deepgram.com/api-reference/#error-handling-str
+            Poll::Ready(Some(Ok(Message::Close(Some(not_normal_close))))) => Poll::Ready(Some(
+                Err(DeepgramError::DeepgramLiveError(not_normal_close)),
+            )),
+
+            // tungstenite guarantees "that you're not going to get this value while reading the message"
+            // Source: https://docs.rs/tungstenite/0.17/tungstenite/enum.Message.html#variant.Frame
+            Poll::Ready(Some(Ok(Message::Frame(_)))) => {
+                unreachable!("Unexpected raw WebSocket frame");
+            }
+
+            // tungstenite::Error occured
+            Poll::Ready(Some(Err(err))) => Poll::Ready(Some(Err(DeepgramError::WsError(err)))),
+
+            // Stream has terminated
+            Poll::Ready(None) => Poll::Ready(None),
+
+            // Stream' next value is not ready yet
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+impl<B: Into<Vec<u8>>> Sink<B> for DeepgramLive {
+    type Error = DeepgramError;
+
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.websocket
+            .poll_ready_unpin(cx)
+            .map(|result| Ok(result?))
+    }
+
+    fn start_send(mut self: Pin<&mut Self>, item: B) -> Result<(), Self::Error> {
+        Ok(self.websocket.start_send_unpin(Message::binary(item))?)
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.websocket
+            .poll_flush_unpin(cx)
+            .map(|result| Ok(result?))
+    }
+
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.websocket
+            .poll_close_unpin(cx)
+            .map(|result| Ok(result?))
+    }
+}
+
+impl FusedStream for DeepgramLive {
+    fn is_terminated(&self) -> bool {
+        self.websocket.is_terminated()
     }
 }
