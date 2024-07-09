@@ -4,7 +4,29 @@
 
 //! Official Rust SDK for Deepgram's automated speech recognition APIs.
 //!
-//! Get started transcribing with a [`Transcription`](transcription::Transcription) object.
+//! Get started transcribing with a [`Deepgram`] client.
+//!
+//! ```no_run
+//! # #[tokio::main]
+//! # async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
+//! use deepgram::{
+//!     Deepgram,
+//!     transcription::prerecorded::{
+//!         audio_source::AudioSource,
+//!         options::{Model, Options},
+//!     },
+//! };
+//! let deepgram_api_key = env::var("DEEPGRAM_API_KEY")
+//!     .expect("DEEPGRAM_API_KEY environmental variable");
+//! let dg = Deepgram::new(deepgram_api_key);
+//! let audio_source = AudioSource::from_url("https://static.deepgram.com/examples/Bueller-Life-moves-pretty-fast.wav");
+//! let result = dg.transcription()
+//!     .prerecorded(audio_source, &Options::builder().model(Model::Nova2).build())
+//!     .await?;
+//! println!("{}", result.results.channels[0].alternatives[0].transcript);
+//! # Ok(())
+//! # }
+//! ```
 
 use std::io;
 
