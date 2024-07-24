@@ -117,6 +117,10 @@ pub struct Deepgram {
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum DeepgramError {
+    /// The provided URL could not be used as a base_url.
+    #[error("The provided base_url is not valid. Please provide a URL starting with http:// or https://")]
+    InvalidBaseUrl,
+
     /// No source was provided to the request builder.
     #[error("No source was provided to the request builder.")]
     NoSource,
@@ -170,7 +174,9 @@ impl Deepgram {
     /// Panics under the same conditions as [`reqwest::Client::new`].
     pub fn new<K: AsRef<str>>(api_key: K) -> Self {
         let api_key = Some(api_key.as_ref().to_owned());
-        Self::inner_constructor(DEEPGRAM_BASE_URL.try_into().unwrap(), api_key)
+        // Unwrap: `DEEPGRAM_BASE_URL` is a valid URL.
+        let base_url = parse_base_url(DEEPGRAM_BASE_URL).unwrap();
+        Self::inner_constructor(base_url, api_key)
     }
 
     /// Construct a new Deepgram client with the specified base URL.
@@ -200,17 +206,19 @@ impl Deepgram {
     /// );
     /// ```
     ///
+    /// # Errors
+    ///
+    /// Returns a [`DeepgramError::InvalidBaseUrl`] if base_url is not a valid URL.
+    ///
     /// # Panics
     ///
-    /// Panics under the same conditions as [`reqwest::Client::new`], or if `base_url`
-    /// is not a valid URL.
-    pub fn with_base_url<U>(base_url: U) -> Self
+    /// Panics under the same conditions as [`reqwest::Client::new`].
+    pub fn with_base_url<U>(base_url: U) -> Result<Self>
     where
         U: TryInto<Url>,
-        U::Error: std::fmt::Debug,
     {
-        let base_url = base_url.try_into().expect("base_url must be a valid Url");
-        Self::inner_constructor(base_url, None)
+        let base_url = parse_base_url(base_url)?;
+        Ok(Self::inner_constructor(base_url, None))
     }
 
     /// Construct a new Deepgram client with the specified base URL and
@@ -236,18 +244,23 @@ impl Deepgram {
     /// );
     /// ```
     ///
+    /// # Errors
+    ///
+    /// Returns a [`DeepgramError::InvalidBaseUrl`] if base_url is not a valid URL.
+    ///
     /// # Panics
     ///
-    /// Panics under the same conditions as [`reqwest::Client::new`], or if `base_url`
-    /// is not a valid URL.
-    pub fn with_base_url_and_api_key<U, K>(base_url: U, api_key: K) -> Self
+    /// Panics under the same conditions as [`reqwest::Client::new`].
+    pub fn with_base_url_and_api_key<U, K>(base_url: U, api_key: K) -> Result<Self>
     where
         U: TryInto<Url>,
-        U::Error: std::fmt::Debug,
         K: AsRef<str>,
     {
-        let base_url = base_url.try_into().expect("base_url must be a valid Url");
-        Self::inner_constructor(base_url, Some(api_key.as_ref().to_owned()))
+        let base_url = parse_base_url(base_url)?;
+        Ok(Self::inner_constructor(
+            base_url,
+            Some(api_key.as_ref().to_owned()),
+        ))
     }
 
     fn inner_constructor(base_url: Url, api_key: Option<String>) -> Self {
@@ -280,6 +293,24 @@ impl Deepgram {
                 .expect("See reqwest::Client::new docs for cause of panic"),
         }
     }
+}
+
+fn parse_base_url<U>(base_url: U) -> Result<Url>
+where
+    U: TryInto<Url>,
+{
+    let Ok(base_url) = base_url.try_into() else {
+        return Err(DeepgramError::InvalidBaseUrl);
+    };
+    if base_url.cannot_be_a_base() {
+        return Err(DeepgramError::InvalidBaseUrl);
+    }
+
+    if !matches!(base_url.scheme(), "http" | "https" | "ws" | "wss") {
+        return Err(DeepgramError::InvalidBaseUrl);
+    }
+
+    Ok(base_url)
 }
 
 /// Sends the request and checks the response for an error.

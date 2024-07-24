@@ -284,7 +284,7 @@ mod tests {
 
     #[test]
     fn listen_url_custom_host() {
-        let dg = Deepgram::with_base_url("http://localhost:8888/abc/");
+        let dg = Deepgram::with_base_url("http://localhost:8888/abc/").unwrap();
         assert_eq!(
             &dg.transcription().listen_url().to_string(),
             "http://localhost:8888/abc/v1/listen"

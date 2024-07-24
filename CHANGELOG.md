@@ -47,6 +47,7 @@ Some Enums have changed and may need to be updated
 - Add support for pre-recorded features when streaming
 - Add Speech to Text
 - Reorganize Code
+- Made Deepgram constructors fallible when taking a custom URL
 
 ### Streaming Features
 - endpointing

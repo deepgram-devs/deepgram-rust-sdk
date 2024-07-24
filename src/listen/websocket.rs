@@ -412,7 +412,8 @@ mod tests {
 
     #[test]
     fn test_stream_url_custom_host() {
-        let dg = crate::Deepgram::with_base_url_and_api_key("http://localhost:8080", "token");
+        let dg =
+            crate::Deepgram::with_base_url_and_api_key("http://localhost:8080", "token").unwrap();
         assert_eq!(
             dg.transcription().listen_stream_url().to_string(),
             "ws://localhost:8080/v1/listen",
