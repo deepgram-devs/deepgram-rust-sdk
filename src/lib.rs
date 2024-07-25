@@ -143,14 +143,24 @@ pub enum DeepgramError {
     #[error("Something went wrong during I/O: {0}")]
     IoError(#[from] io::Error),
 
-    #[cfg(feature = "listen")]
     /// Something went wrong with WS.
+    #[cfg(feature = "listen")]
     #[error("Something went wrong with WS: {0}")]
     WsError(#[from] tungstenite::Error),
 
     /// Something went wrong during serialization/deserialization.
     #[error("Something went wrong during serialization/deserialization: {0}")]
     SerdeError(#[from] serde_json::Error),
+
+    /// Something went wrong with sending
+    #[cfg(feature = "listen")]
+    #[error("Something went wrong with WS: {0}")]
+    SendError(#[from] futures::channel::mpsc::SendError),
+
+    /// Something went wrong with receiving
+    #[cfg(feature = "listen")]
+    #[error("Deepgram error: {0}")]
+    CustomError(String),
 }
 
 #[cfg_attr(not(feature = "listen"), allow(unused))]

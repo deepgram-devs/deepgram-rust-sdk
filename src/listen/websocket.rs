@@ -18,15 +18,19 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 
 use bytes::{Bytes, BytesMut};
+use futures::channel::mpsc as futures_mpsc;
 use futures::channel::mpsc::{self, Receiver};
-use futures::stream::StreamExt;
+use futures::stream::{SplitSink, StreamExt};
 use futures::{SinkExt, Stream};
 use http::Request;
 use pin_project::pin_project;
 use tokio::fs::File;
+use tokio::net::TcpStream;
+use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
 use tokio::time;
 use tokio_tungstenite::tungstenite::protocol::Message;
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use tokio_util::io::ReaderStream;
 use tungstenite::handshake::client;
 use url::Url;
@@ -35,6 +39,15 @@ use crate::common::options::{Encoding, Endpointing, Options, SerializableOptions
 use crate::{Deepgram, DeepgramError, Result, Transcription};
 
 static LIVE_LISTEN_URL_PATH: &str = "v1/listen";
+
+// Define event types
+#[derive(Debug)]
+pub enum Event {
+    Open,
+    Close,
+    Error(DeepgramError),
+    Result(String),
+}
 
 #[derive(Debug)]
 pub struct StreamRequestBuilder<'a, S, E>
@@ -54,6 +67,8 @@ where
     vad_events: Option<bool>,
     stream_url: Url,
     keep_alive: Option<bool>,
+    #[allow(clippy::type_complexity)]
+    write_arc: Option<Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>>>>,
 }
 
 #[pin_project]
@@ -93,6 +108,7 @@ impl Transcription<'_> {
             vad_events: None,
             stream_url: self.listen_stream_url(),
             keep_alive: None,
+            write_arc: None,
         }
     }
 
@@ -214,6 +230,7 @@ impl<'a> StreamRequestBuilder<'a, Receiver<Result<Bytes>>, DeepgramError> {
         filename: impl AsRef<Path>,
         frame_size: usize,
         frame_delay: Duration,
+        event_tx: Sender<Event>,
     ) -> Result<StreamRequestBuilder<'a, Receiver<Result<Bytes>>, DeepgramError>> {
         let file = File::open(filename).await?;
         let mut chunker = FileChunker::new(file, frame_size);
@@ -221,9 +238,11 @@ impl<'a> StreamRequestBuilder<'a, Receiver<Result<Bytes>>, DeepgramError> {
         let task = async move {
             while let Some(frame) = chunker.next().await {
                 tokio::time::sleep(frame_delay).await;
-                // This unwrap() is safe because application logic dictates that the Receiver won't
-                // be dropped before the Sender.
-                tx.send(frame).await.unwrap();
+                if let Err(e) = tx.send(frame).await {
+                    eprintln!("Failed to send frame: {:?}", e);
+                    let _ = event_tx.send(Event::Error(DeepgramError::from(e))).await;
+                    break;
+                }
             }
         };
         tokio::spawn(task);
@@ -238,12 +257,60 @@ fn options_to_query_string(options: &Options) -> String {
     serde_urlencoded::to_string(serialized_options).unwrap_or_default()
 }
 
+#[derive(Debug)]
+pub struct TranscriptionStream {
+    write_arc: Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>>>,
+}
+
+impl TranscriptionStream {
+    pub async fn finalize(
+        &self,
+        event_tx: Sender<Event>,
+    ) -> std::result::Result<(), DeepgramError> {
+        let finalize_message = Message::Text("{\"type\": \"Finalize\"}".to_string());
+        let mut write_guard = self.write_arc.lock().await;
+        if let Err(e) = write_guard.send(finalize_message).await {
+            let err = DeepgramError::from(e);
+            eprintln!("Error sending Finalize message: {:?}", err);
+            event_tx.send(Event::Error(err)).await.unwrap();
+            return Err(DeepgramError::CustomError(
+                "Failed to send Finalize message".to_string(),
+            ));
+        }
+        Ok(())
+    }
+
+    pub async fn finish(&self, event_tx: Sender<Event>) -> std::result::Result<(), DeepgramError> {
+        let finish_message = Message::Text("{\"type\": \"CloseStream\"}".to_string());
+        let mut write_guard = self.write_arc.lock().await;
+        if let Err(e) = write_guard.send(finish_message).await {
+            let err = DeepgramError::from(e);
+            eprintln!("Error sending CloseStream message: {:?}", err);
+            event_tx.send(Event::Error(err)).await.unwrap();
+            return Err(DeepgramError::CustomError(
+                "Failed to send CloseStream message".to_string(),
+            ));
+        }
+        event_tx.send(Event::Close).await.unwrap();
+        Ok(())
+    }
+}
+
 impl<S, E> StreamRequestBuilder<'_, S, E>
 where
     S: Stream<Item = std::result::Result<Bytes, E>> + Send + Unpin + 'static,
     E: Send + std::fmt::Debug,
 {
-    pub async fn start(self) -> Result<Receiver<Result<StreamResponse>>> {
+    pub async fn start(
+        mut self,
+        event_tx: Sender<Event>,
+    ) -> std::result::Result<
+        (
+            TranscriptionStream,
+            futures_mpsc::Receiver<std::result::Result<StreamResponse, DeepgramError>>,
+        ),
+        DeepgramError,
+    > {
         // This unwrap is safe because we're parsing a static.
         let mut url = self.stream_url;
         {
@@ -317,13 +384,22 @@ where
         };
         let (ws_stream, _) = tokio_tungstenite::connect_async(request).await?;
         let (write, mut read) = ws_stream.split();
-        let write = Arc::new(Mutex::new(write));
+        let write_arc = Arc::new(Mutex::new(write));
+        let cloned_write_arc = Arc::clone(&write_arc);
+        self.write_arc = Some(cloned_write_arc); // Store the write arc
         let (mut tx, rx) = mpsc::channel::<Result<StreamResponse>>(1);
+
+        let event_tx_open = event_tx.clone();
+        let event_tx_keep_alive = event_tx.clone();
+        let event_tx_send = event_tx.clone();
+        let event_tx_receive = event_tx.clone();
+
+        event_tx_open.send(Event::Open).await.unwrap();
 
         // Spawn the keep-alive task
         if self.keep_alive.unwrap_or(false) {
             {
-                let write_clone = Arc::clone(&write);
+                let write_clone = Arc::clone(&write_arc);
                 tokio::spawn(async move {
                     let mut interval = time::interval(Duration::from_secs(10));
                     loop {
@@ -333,6 +409,9 @@ where
                         let mut write = write_clone.lock().await;
                         if let Err(e) = write.send(keep_alive_message).await {
                             eprintln!("Error Sending Keep Alive: {:?}", e);
+                            let _ = event_tx_keep_alive
+                                .send(Event::Error(DeepgramError::from(e)))
+                                .await;
                             break;
                         }
                     }
@@ -340,7 +419,7 @@ where
             };
         }
 
-        let write_clone = Arc::clone(&write);
+        let write_clone = Arc::clone(&write_arc);
         let send_task = async move {
             while let Some(frame) = source.next().await {
                 match frame {
@@ -348,11 +427,17 @@ where
                         let mut write = write_clone.lock().await;
                         if let Err(e) = write.send(frame).await {
                             println!("Error sending frame: {:?}", e);
+                            let _ = event_tx_send
+                                .send(Event::Error(DeepgramError::from(e)))
+                                .await;
                             break;
                         }
                     }
                     Err(e) => {
                         println!("Error receiving from source: {:?}", e);
+                        let _ = event_tx_send
+                            .send(Event::Error(DeepgramError::CustomError(format!("{:?}", e))))
+                            .await;
                         break;
                     }
                 }
@@ -361,23 +446,48 @@ where
             let mut write = write_clone.lock().await;
             if let Err(e) = write.send(Message::binary([])).await {
                 println!("Error sending final frame: {:?}", e);
+                let _ = event_tx_send
+                    .send(Event::Error(DeepgramError::from(e)))
+                    .await;
             }
         };
 
+        let recv_write_clone = Arc::clone(&write_arc);
         let recv_task = async move {
             loop {
                 match read.next().await {
                     None => break,
                     Some(Ok(msg)) => {
-                        if let Message::Text(txt) = msg {
-                            let resp = serde_json::from_str(&txt).map_err(DeepgramError::from);
-                            tx.send(resp)
-                                .await
-                                // This unwrap is probably not safe.
-                                .unwrap();
+                        match msg {
+                            Message::Text(txt) => {
+                                let resp = serde_json::from_str(&txt).map_err(DeepgramError::from);
+                                if let Err(e) = tx.send(resp).await {
+                                    eprintln!("Failed to send message: {:?}", e);
+                                    let _ = event_tx_receive
+                                        .send(Event::Error(DeepgramError::from(e)))
+                                        .await;
+                                    // Handle the error appropriately, e.g., log it, retry, or break the loop
+                                    break;
+                                }
+                            }
+                            Message::Close(close_frame) => {
+                                println!("Received close frame: {:?}", close_frame);
+                                // Send a close frame back to acknowledge the close request
+                                let mut write = recv_write_clone.lock().await;
+                                if let Err(_e) = write.send(Message::Close(None)).await {
+                                    // Should we notify the client we could not ack the server initiated close frame?
+                                    // eprintln!("Failed to send close frame: {:?}", e);
+                                    // let _ = event_tx_receive
+                                    //     .send(Event::Error(DeepgramError::from(e)))
+                                    //     .await;
+                                }
+                                event_tx_receive.send(Event::Close).await.unwrap();
+                                break;
+                            }
+                            _ => {}
                         }
                     }
-                    Some(e) => {
+                    Some(Err(e)) => {
                         let _ = dbg!(e);
                         break;
                     }
@@ -389,7 +499,7 @@ where
             tokio::join!(send_task, recv_task);
         });
 
-        Ok(rx)
+        Ok((TranscriptionStream { write_arc }, rx))
     }
 
     pub fn keep_alive(mut self) -> Self {
