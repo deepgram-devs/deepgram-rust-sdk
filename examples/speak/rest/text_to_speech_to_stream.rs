@@ -17,6 +17,7 @@ pub struct Linear16AudioSource {
 }
 
 impl Linear16AudioSource {
+    #[must_use]
     pub fn new(sample_rate: u32, channels: u16) -> Self {
         Self {
             sample_rate,
@@ -29,10 +30,12 @@ impl Linear16AudioSource {
         self.buffer.extend_from_slice(samples);
     }
 
+    #[must_use]
     pub fn sample_rate(&self) -> u32 {
         self.sample_rate
     }
 
+    #[must_use]
     pub fn channels(&self) -> u16 {
         self.channels
     }
@@ -135,7 +138,7 @@ async fn main() -> Result<(), DeepgramError> {
         // Print timing information if not already printed
         if !time_to_first_byte_printed {
             let elapsed_time = start_time.elapsed();
-            println!("Time to first audio byte: {:.2?}", elapsed_time);
+            println!("Time to first audio byte: {elapsed_time:.2?}");
             time_to_first_byte_printed = true;
         }
 

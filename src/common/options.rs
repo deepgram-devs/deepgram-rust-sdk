@@ -68,7 +68,7 @@ pub enum DetectLanguage {
     Restricted(Vec<Language>),
 }
 
-/// DetectLanguage Impl
+/// `DetectLanguage` Impl
 impl DetectLanguage {
     pub(crate) fn to_key_value_pairs(&self) -> Vec<(&str, String)> {
         match self {
@@ -647,12 +647,13 @@ pub enum Multichannel {
 #[derive(Debug, PartialEq, Clone)]
 pub struct OptionsBuilder(Options);
 
-/// SerializableOptions
+/// `SerializableOptions`
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) struct SerializableOptions<'a>(pub(crate) &'a Options);
 
 impl Options {
     /// Construct a new [`OptionsBuilder`].
+    #[must_use]
     pub fn builder() -> OptionsBuilder {
         OptionsBuilder::new()
     }
@@ -678,6 +679,7 @@ impl Options {
 
 impl OptionsBuilder {
     /// Construct a new [`OptionsBuilder`].
+    #[must_use]
     pub fn new() -> Self {
         Self(Options {
             model: None,
@@ -743,6 +745,7 @@ impl OptionsBuilder {
     ///     .build();
     /// ```
     ///
+    #[must_use]
     pub fn model(mut self, model: Model) -> Self {
         self.0.model = Some(model);
 
@@ -768,6 +771,7 @@ impl OptionsBuilder {
     ///     .version("12345678-1234-1234-1234-1234567890ab")
     ///     .build();
     /// ```
+    #[must_use]
     pub fn version(mut self, version: &str) -> Self {
         self.0.version = Some(version.into());
         self
@@ -788,6 +792,7 @@ impl OptionsBuilder {
     ///     .language(Language::en_US)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn language(mut self, language: Language) -> Self {
         self.0.language = Some(language);
         self
@@ -808,6 +813,7 @@ impl OptionsBuilder {
     ///     .punctuate(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn punctuate(mut self, punctuate: bool) -> Self {
         self.0.punctuate = Some(punctuate);
         self
@@ -830,6 +836,7 @@ impl OptionsBuilder {
     ///     .profanity_filter(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn profanity_filter(mut self, profanity_filter: bool) -> Self {
         self.0.profanity_filter = Some(profanity_filter);
         self
@@ -889,6 +896,7 @@ impl OptionsBuilder {
     ///     .diarize(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn diarize(mut self, diarize: bool) -> Self {
         self.0.diarize = Some(diarize);
         self
@@ -909,6 +917,7 @@ impl OptionsBuilder {
     ///     .diarize_version("2021-07-14.0")
     ///     .build();
     /// ```
+    #[must_use]
     pub fn diarize_version(mut self, diarize_version: &str) -> Self {
         self.0.diarize_version = Some(diarize_version.into());
         self
@@ -931,6 +940,7 @@ impl OptionsBuilder {
     ///     .ner(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn ner(mut self, ner: bool) -> Self {
         self.0.ner = Some(ner);
         self
@@ -972,6 +982,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn multichannel(mut self, multichannel: bool) -> Self {
         self.0.multichannel = Some(if multichannel {
             Multichannel::Enabled
@@ -1116,6 +1127,7 @@ impl OptionsBuilder {
     ///     .alternatives(3)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn alternatives(mut self, alternatives: usize) -> Self {
         self.0.alternatives = Some(alternatives);
         self
@@ -1138,6 +1150,7 @@ impl OptionsBuilder {
     ///     .numerals(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn numerals(mut self, numerals: bool) -> Self {
         self.0.numerals = Some(numerals);
         self
@@ -1372,6 +1385,7 @@ impl OptionsBuilder {
     ///     .keyword_boost_legacy()
     ///     .build();
     /// ```
+    #[must_use]
     pub fn keyword_boost_legacy(mut self) -> Self {
         self.0.keyword_boost_legacy = Some(true);
         self
@@ -1394,6 +1408,7 @@ impl OptionsBuilder {
     ///     .utterances(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn utterances(mut self, utterances: bool) -> Self {
         self.0.utterances = Some(if utterances {
             Utterances::Enabled
@@ -1423,6 +1438,7 @@ impl OptionsBuilder {
     ///     .utterances_with_utt_split(0.9)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn utterances_with_utt_split(mut self, utt_split: f64) -> Self {
         self.0.utterances = Some(Utterances::CustomSplit {
             utt_split: Some(utt_split),
@@ -1482,6 +1498,7 @@ impl OptionsBuilder {
     ///     .detect_language(DetectLanguage::Enabled)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn detect_language(mut self, detect_language: DetectLanguage) -> Self {
         self.0.detect_language = Some(detect_language);
 
@@ -1532,6 +1549,7 @@ impl OptionsBuilder {
     ///     .encoding(Encoding::Linear16)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn encoding(mut self, encoding: Encoding) -> Self {
         self.0.encoding = Some(encoding);
         self
@@ -1552,6 +1570,7 @@ impl OptionsBuilder {
     ///     .smart_format(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn smart_format(mut self, smart_format: bool) -> Self {
         self.0.smart_format = Some(smart_format);
         self
@@ -1572,6 +1591,7 @@ impl OptionsBuilder {
     ///     .filler_words(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn filler_words(mut self, filler_words: bool) -> Self {
         self.0.filler_words = Some(filler_words);
 
@@ -1593,6 +1613,7 @@ impl OptionsBuilder {
     ///     .paragraphs(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn paragraphs(mut self, paragraphs: bool) -> Self {
         self.0.paragraphs = Some(paragraphs);
 
@@ -1614,6 +1635,7 @@ impl OptionsBuilder {
     ///     .detect_entities(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn detect_entities(mut self, detect_entities: bool) -> Self {
         self.0.detect_entities = Some(detect_entities);
 
@@ -1635,6 +1657,7 @@ impl OptionsBuilder {
     ///     .intents(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn intents(mut self, intents: bool) -> Self {
         self.0.intents = Some(intents);
 
@@ -1656,6 +1679,7 @@ impl OptionsBuilder {
     ///     .custom_intent_mode(CustomIntentMode::Extended)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn custom_intent_mode(mut self, custom_intent_mode: CustomIntentMode) -> Self {
         self.0.custom_intent_mode = Some(custom_intent_mode);
 
@@ -1712,6 +1736,7 @@ impl OptionsBuilder {
     ///     .sentiment(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn sentiment(mut self, sentiment: bool) -> Self {
         self.0.sentiment = Some(sentiment);
 
@@ -1733,6 +1758,7 @@ impl OptionsBuilder {
     ///     .topics(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn topics(mut self, topics: bool) -> Self {
         self.0.topics = Some(topics);
 
@@ -1789,6 +1815,7 @@ impl OptionsBuilder {
     ///     .custom_topic_mode(CustomTopicMode::Extended)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn custom_topic_mode(mut self, custom_topic_mode: CustomTopicMode) -> Self {
         self.0.custom_topic_mode = Some(custom_topic_mode);
 
@@ -1810,6 +1837,7 @@ impl OptionsBuilder {
     ///     .summarize(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn summarize(mut self, summarize: bool) -> Self {
         self.0.summarize = Some(summarize);
         self
@@ -1830,6 +1858,7 @@ impl OptionsBuilder {
     ///     .dictation(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn dictation(mut self, dictation: bool) -> Self {
         self.0.dictation = Some(dictation);
 
@@ -1851,6 +1880,7 @@ impl OptionsBuilder {
     ///     .measurements(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn measurements(mut self, measurements: bool) -> Self {
         self.0.measurements = Some(measurements);
 
@@ -1873,6 +1903,7 @@ impl OptionsBuilder {
     ///     .extra(HashMap::from([("key".to_string(), "value".to_string())]))
     ///     .build();
     /// ```
+    #[must_use]
     pub fn extra(mut self, extra: HashMap<String, String>) -> Self {
         self.0.extra = Some(extra);
         self
@@ -1893,12 +1924,14 @@ impl OptionsBuilder {
     ///     .callback_method(CallbackMethod::PUT)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn callback_method(mut self, callback_method: CallbackMethod) -> Self {
         self.0.callback_method = Some(callback_method);
         self
     }
 
     /// Finish building the [`Options`] object.
+    #[must_use]
     pub fn build(self) -> Options {
         self.0
     }
@@ -2160,8 +2193,8 @@ impl Serialize for SerializableOptions<'_> {
         }
 
         if let Some(extra) = extra {
-            for (key, value) in extra.iter() {
-                seq.serialize_element(&("extra", format!("{}:{}", key, value)))?;
+            for (key, value) in extra {
+                seq.serialize_element(&("extra", format!("{key}:{value}")))?;
             }
         }
 
@@ -2283,7 +2316,7 @@ impl AsRef<str> for Language {
 
 impl AsRef<str> for Redact {
     fn as_ref(&self) -> &str {
-        use Redact::*;
+        use Redact::{Numbers, Other, Pci, Ssn};
 
         match self {
             Pci => "pci",
@@ -2388,7 +2421,7 @@ mod serialize_options_tests {
 
         let expected = limited_letters
             .iter()
-            .map(|letter| format!("{}={}", key, letter))
+            .map(|letter| format!("{key}={letter}"))
             .collect::<Vec<String>>()
             .join("&");
 

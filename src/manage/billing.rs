@@ -23,6 +23,7 @@ pub struct Billing<'a>(&'a Deepgram);
 
 impl Deepgram {
     /// Construct a new [`Billing`] from a [`Deepgram`].
+    #[must_use]
     pub fn billing(&self) -> Billing<'_> {
         self.into()
     }
@@ -67,10 +68,7 @@ impl Billing<'_> {
     /// # }
     /// ```
     pub async fn list_balance(&self, project_id: &str) -> crate::Result<Balances> {
-        let url = format!(
-            "https://api.deepgram.com/v1/projects/{}/balances",
-            project_id,
-        );
+        let url = format!("https://api.deepgram.com/v1/projects/{project_id}/balances",);
 
         send_and_translate_response(self.0.client.get(url)).await
     }
@@ -111,10 +109,8 @@ impl Billing<'_> {
     /// # }
     /// ```
     pub async fn get_balance(&self, project_id: &str, balance_id: &str) -> crate::Result<Balance> {
-        let url = format!(
-            "https://api.deepgram.com/v1/projects/{}/balances/{}",
-            project_id, balance_id,
-        );
+        let url =
+            format!("https://api.deepgram.com/v1/projects/{project_id}/balances/{balance_id}",);
 
         send_and_translate_response(self.0.client.get(url)).await
     }

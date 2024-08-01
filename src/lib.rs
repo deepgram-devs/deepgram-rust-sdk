@@ -51,11 +51,13 @@ pub struct Speak<'a>(#[allow(unused)] pub &'a Deepgram);
 
 impl Deepgram {
     /// Construct a new [`Transcription`] from a [`Deepgram`].
+    #[must_use]
     pub fn transcription(&self) -> Transcription<'_> {
         self.into()
     }
 
     /// Construct a new [`Speak`] from a [`Deepgram`].
+    #[must_use]
     pub fn text_to_speech(&self) -> Speak<'_> {
         self.into()
     }
@@ -77,6 +79,7 @@ impl<'a> From<&'a Deepgram> for Speak<'a> {
 
 impl<'a> Transcription<'a> {
     /// Expose a method to access the inner `Deepgram` reference if needed.
+    #[must_use]
     pub fn deepgram(&self) -> &Deepgram {
         self.0
     }
@@ -178,7 +181,7 @@ impl Deepgram {
     /// When using a self-hosted instance of deepgram, this will be the
     /// host portion of your own instance. For instance, if you would
     /// query your deepgram instance at `http://deepgram.internal/v1/listen`,
-    /// the base_url will be `http://deepgram.internal`.
+    /// the `base_url` will be `http://deepgram.internal`.
     ///
     /// Admin features, such as billing, usage, and key management will
     /// still go through the hosted site at `https://api.deepgram.com`.
@@ -219,7 +222,7 @@ impl Deepgram {
     /// When using a self-hosted instance of deepgram, this will be the
     /// host portion of your own instance. For instance, if you would
     /// query your deepgram instance at `http://deepgram.internal/v1/listen`,
-    /// the base_url will be `http://deepgram.internal`.
+    /// the `base_url` will be `http://deepgram.internal`.
     ///
     /// Admin features, such as billing, usage, and key management will
     /// still go through the hosted site at `https://api.deepgram.com`.
@@ -263,7 +266,7 @@ impl Deepgram {
             if let Some(api_key) = &api_key {
                 header.insert(
                     "Authorization",
-                    HeaderValue::from_str(&format!("Token {}", api_key)).expect("Invalid API key"),
+                    HeaderValue::from_str(&format!("Token {api_key}")).expect("Invalid API key"),
                 );
             }
             header

@@ -69,10 +69,12 @@ struct FileChunker {
 }
 
 impl Transcription<'_> {
+    #[must_use]
     pub fn stream_request(&self) -> StreamRequestBuilder<'_> {
         self.stream_request_with_options(Options::builder().build())
     }
 
+    #[must_use]
     pub fn stream_request_with_options(&self, options: Options) -> StreamRequestBuilder<'_> {
         StreamRequestBuilder {
             deepgram: self.0,
@@ -250,54 +252,63 @@ impl<'a> StreamRequestBuilder<'a> {
         Ok(url)
     }
 
+    #[must_use]
     pub fn encoding(mut self, encoding: Encoding) -> Self {
         self.encoding = Some(encoding);
 
         self
     }
 
+    #[must_use]
     pub fn sample_rate(mut self, sample_rate: u32) -> Self {
         self.sample_rate = Some(sample_rate);
 
         self
     }
 
+    #[must_use]
     pub fn channels(mut self, channels: u16) -> Self {
         self.channels = Some(channels);
 
         self
     }
 
+    #[must_use]
     pub fn endpointing(mut self, endpointing: Endpointing) -> Self {
         self.endpointing = Some(endpointing);
 
         self
     }
 
+    #[must_use]
     pub fn utterance_end_ms(mut self, utterance_end_ms: u16) -> Self {
         self.utterance_end_ms = Some(utterance_end_ms);
 
         self
     }
 
+    #[must_use]
     pub fn interim_results(mut self, interim_results: bool) -> Self {
         self.interim_results = Some(interim_results);
 
         self
     }
 
+    #[must_use]
     pub fn no_delay(mut self, no_delay: bool) -> Self {
         self.no_delay = Some(no_delay);
 
         self
     }
 
+    #[must_use]
     pub fn vad_events(mut self, vad_events: bool) -> Self {
         self.vad_events = Some(vad_events);
 
         self
     }
 
+    #[must_use]
     pub fn keep_alive(mut self) -> Self {
         self.keep_alive = Some(true);
 
@@ -367,7 +378,7 @@ where
                 .header("sec-websocket-version", "13");
 
             let builder = if let Some(api_key) = self.builder.deepgram.api_key.as_deref() {
-                builder.header("authorization", format!("token {}", api_key))
+                builder.header("authorization", format!("token {api_key}"))
             } else {
                 builder
             };
@@ -390,7 +401,7 @@ where
                             Message::Text("{\"type\": \"KeepAlive\"}".to_string());
                         let mut write = write_clone.lock().await;
                         if let Err(e) = write.send(keep_alive_message).await {
-                            eprintln!("Error Sending Keep Alive: {:?}", e);
+                            eprintln!("Error Sending Keep Alive: {e:?}");
                             break;
                         }
                     }
@@ -405,12 +416,12 @@ where
                     Ok(frame) => {
                         let mut write = write_clone.lock().await;
                         if let Err(e) = write.send(frame).await {
-                            println!("Error sending frame: {:?}", e);
+                            println!("Error sending frame: {e:?}");
                             break;
                         }
                     }
                     Err(e) => {
-                        println!("Error receiving from source: {:?}", e);
+                        println!("Error receiving from source: {e:?}");
                         break;
                     }
                 }
@@ -418,7 +429,7 @@ where
 
             let mut write = write_clone.lock().await;
             if let Err(e) = write.send(Message::binary([])).await {
-                println!("Error sending final frame: {:?}", e);
+                println!("Error sending final frame: {e:?}");
             }
         };
 
@@ -479,6 +490,6 @@ mod tests {
         let opts = Options::builder().custom_topics(["A&R"]).build();
         let transcription = dg.transcription();
         let builder = transcription.stream_request_with_options(opts.clone());
-        assert_eq!(builder.urlencoded().unwrap(), opts.urlencoded().unwrap())
+        assert_eq!(builder.urlencoded().unwrap(), opts.urlencoded().unwrap());
     }
 }

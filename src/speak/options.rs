@@ -102,7 +102,7 @@ pub enum Encoding {
     CustomEncoding(String),
 }
 
-/// TTSEncoding Impl
+/// `TTSEncoding` Impl
 impl Encoding {
     pub(crate) fn as_str(&self) -> &str {
         match self {
@@ -174,6 +174,7 @@ pub(super) struct SerializableOptions<'a>(pub(super) &'a Options);
 
 impl Options {
     /// Construct a new [`OptionsBuilder`].
+    #[must_use]
     pub fn builder() -> OptionsBuilder {
         OptionsBuilder::new()
     }
@@ -199,6 +200,7 @@ impl Options {
 
 impl OptionsBuilder {
     /// Construct a new [`OptionsBuilder`].
+    #[must_use]
     pub fn new() -> Self {
         Self(Options {
             model: None,
@@ -214,6 +216,7 @@ impl OptionsBuilder {
     /// See the [Deepgram Model feature docs][docs] for more info.
     ///
     /// [docs]: https://developers.deepgram.com/docs/tts-models
+    #[must_use]
     pub fn model(mut self, model: Model) -> Self {
         self.0.model = Some(model);
         self
@@ -224,6 +227,7 @@ impl OptionsBuilder {
     /// See the [Deepgram Encoding feature docs][docs] for more info.
     ///
     /// [docs]: https://developers.deepgram.com/docs/tts-encoding
+    #[must_use]
     pub fn encoding(mut self, encoding: Encoding) -> Self {
         self.0.encoding = Some(encoding);
         self
@@ -234,6 +238,7 @@ impl OptionsBuilder {
     /// See the [Deepgram Sample Rate feature docs][docs] for more info.
     ///
     /// [docs]: https://developers.deepgram.com/docs/tts-sample-rate
+    #[must_use]
     pub fn sample_rate(mut self, sample_rate: u32) -> Self {
         self.0.sample_rate = Some(sample_rate);
         self
@@ -244,6 +249,7 @@ impl OptionsBuilder {
     /// See the [Deepgram Container docs][docs] for more info.
     ///
     /// [docs]: https://developers.deepgram.com/docs/tts-container
+    #[must_use]
     pub fn container(mut self, container: Container) -> Self {
         self.0.container = Some(container);
         self
@@ -254,12 +260,14 @@ impl OptionsBuilder {
     /// See the [Deepgram Bit Rate feature docs][docs] for more info.
     ///
     /// [docs]: https://developers.deepgram.com/docs/tts-bit-rate
+    #[must_use]
     pub fn bit_rate(mut self, bit_rate: u32) -> Self {
         self.0.bit_rate = Some(bit_rate);
         self
     }
 
     /// Finish building the [`Options`] object.
+    #[must_use]
     pub fn build(self) -> Options {
         self.0
     }

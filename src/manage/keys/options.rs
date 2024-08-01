@@ -234,12 +234,14 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn time_to_live_in_seconds(mut self, time_to_live_in_seconds: usize) -> Self {
         self.0.expiration = Some(Expiration::TimeToLiveInSeconds(time_to_live_in_seconds));
         self
     }
 
     /// Finish building the [`Options`] object.
+    #[must_use]
     pub fn build(self) -> Options {
         self.0
     }

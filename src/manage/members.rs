@@ -22,6 +22,7 @@ pub struct Members<'a>(&'a Deepgram);
 
 impl Deepgram {
     /// Construct a new [`Members`] from a [`Deepgram`].
+    #[must_use]
     pub fn members(&self) -> Members<'_> {
         self.into()
     }
@@ -67,10 +68,7 @@ impl Members<'_> {
     /// # }
     /// ```
     pub async fn list_members(&self, project_id: &str) -> crate::Result<response::Members> {
-        let url = format!(
-            "https://api.deepgram.com/v1/projects/{}/members",
-            project_id,
-        );
+        let url = format!("https://api.deepgram.com/v1/projects/{project_id}/members",);
 
         send_and_translate_response(self.0.client.get(url)).await
     }
@@ -110,10 +108,7 @@ impl Members<'_> {
     /// # }
     /// ```
     pub async fn remove_member(&self, project_id: &str, member_id: &str) -> crate::Result<Message> {
-        let url = format!(
-            "https://api.deepgram.com/v1/projects/{}/members/{}",
-            project_id, member_id,
-        );
+        let url = format!("https://api.deepgram.com/v1/projects/{project_id}/members/{member_id}",);
 
         send_and_translate_response(self.0.client.delete(url)).await
     }

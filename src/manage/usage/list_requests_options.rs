@@ -53,6 +53,7 @@ pub(crate) struct SerializableOptions<'a> {
 
 impl Options {
     /// Construct a new [`OptionsBuilder`].
+    #[must_use]
     pub fn builder() -> OptionsBuilder {
         OptionsBuilder::new()
     }
@@ -79,6 +80,7 @@ impl Options {
 
 impl OptionsBuilder {
     /// Construct a new [`OptionsBuilder`].
+    #[must_use]
     pub fn new() -> Self {
         Self(Options {
             start: None,
@@ -131,6 +133,7 @@ impl OptionsBuilder {
     ///     .limit(42)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn limit(mut self, limit: usize) -> Self {
         self.0.limit = Some(limit);
         self
@@ -147,12 +150,14 @@ impl OptionsBuilder {
     ///     .status(Status::Succeeded)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn status(mut self, status: Status) -> Self {
         self.0.status = Some(status);
         self
     }
 
     /// Finish building the [`Options`] object.
+    #[must_use]
     pub fn build(self) -> Options {
         self.0
     }

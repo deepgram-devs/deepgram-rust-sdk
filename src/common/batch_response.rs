@@ -243,7 +243,7 @@ pub struct Intents {
     segments: Vec<Segment>,
 }
 
-/// SentimentSegment
+/// `SentimentSegment`
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct SentimentSegment {
     text: String,
@@ -253,7 +253,7 @@ pub struct SentimentSegment {
     sentiment_score: f64,
 }
 
-/// SentimentAverage
+/// `SentimentAverage`
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct SentimentAverage {
     sentiment: String,
@@ -273,14 +273,14 @@ pub struct Sentiments {
     average: SentimentAverage,
 }
 
-/// TopicDetail
+/// `TopicDetail`
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct TopicDetail {
     topic: String,
     confidence_score: f64,
 }
 
-/// TopicSegment
+/// `TopicSegment`
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct TopicSegment {
     text: String,

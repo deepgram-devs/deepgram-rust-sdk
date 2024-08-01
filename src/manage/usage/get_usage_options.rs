@@ -58,6 +58,7 @@ pub(crate) struct SerializableOptions<'a>(&'a Options);
 
 impl Options {
     /// Construct a new [`OptionsBuilder`].
+    #[must_use]
     pub fn builder() -> OptionsBuilder {
         OptionsBuilder::new()
     }
@@ -83,6 +84,7 @@ impl Options {
 
 impl OptionsBuilder {
     /// Construct a new [`OptionsBuilder`].
+    #[must_use]
     pub fn new() -> Self {
         Self(Options {
             start: None,
@@ -271,6 +273,7 @@ impl OptionsBuilder {
     ///     .multichannel(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn multichannel(mut self, multichannel: bool) -> Self {
         self.0.multichannel = Some(multichannel);
         self
@@ -287,6 +290,7 @@ impl OptionsBuilder {
     ///     .interim_results(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn interim_results(mut self, interim_results: bool) -> Self {
         self.0.interim_results = Some(interim_results);
         self
@@ -303,6 +307,7 @@ impl OptionsBuilder {
     ///     .punctuate(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn punctuate(mut self, punctuate: bool) -> Self {
         self.0.punctuate = Some(punctuate);
         self
@@ -319,6 +324,7 @@ impl OptionsBuilder {
     ///     .ner(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn ner(mut self, ner: bool) -> Self {
         self.0.ner = Some(ner);
         self
@@ -335,6 +341,7 @@ impl OptionsBuilder {
     ///     .utterances(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn utterances(mut self, utterances: bool) -> Self {
         self.0.utterances = Some(utterances);
         self
@@ -351,6 +358,7 @@ impl OptionsBuilder {
     ///     .replace(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn replace(mut self, replace: bool) -> Self {
         self.0.replace = Some(replace);
         self
@@ -367,6 +375,7 @@ impl OptionsBuilder {
     ///     .profanity_filter(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn profanity_filter(mut self, profanity_filter: bool) -> Self {
         self.0.profanity_filter = Some(profanity_filter);
         self
@@ -383,6 +392,7 @@ impl OptionsBuilder {
     ///     .keywords(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn keywords(mut self, keywords: bool) -> Self {
         self.0.keywords = Some(keywords);
         self
@@ -399,6 +409,7 @@ impl OptionsBuilder {
     ///     .diarize(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn diarize(mut self, diarize: bool) -> Self {
         self.0.diarize = Some(diarize);
         self
@@ -415,6 +426,7 @@ impl OptionsBuilder {
     ///     .search(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn search(mut self, search: bool) -> Self {
         self.0.search = Some(search);
         self
@@ -431,6 +443,7 @@ impl OptionsBuilder {
     ///     .redact(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn redact(mut self, redact: bool) -> Self {
         self.0.redact = Some(redact);
         self
@@ -447,6 +460,7 @@ impl OptionsBuilder {
     ///     .alternatives(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn alternatives(mut self, alternatives: bool) -> Self {
         self.0.alternatives = Some(alternatives);
         self
@@ -463,12 +477,14 @@ impl OptionsBuilder {
     ///     .numerals(true)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn numerals(mut self, numerals: bool) -> Self {
         self.0.numerals = Some(numerals);
         self
     }
 
     /// Finish building the [`Options`] object.
+    #[must_use]
     pub fn build(self) -> Options {
         self.0
     }
@@ -602,7 +618,7 @@ impl Serialize for SerializableOptions<'_> {
 
 impl AsRef<str> for Method {
     fn as_ref(&self) -> &str {
-        use Method::*;
+        use Method::{Async, Streaming, Sync};
 
         match self {
             Sync => "sync",

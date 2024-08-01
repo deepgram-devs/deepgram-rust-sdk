@@ -34,6 +34,7 @@ pub(crate) struct SerializableOptions<'a> {
 
 impl Options {
     /// Construct a new [`OptionsBuilder`].
+    #[must_use]
     pub fn builder() -> OptionsBuilder {
         OptionsBuilder::new()
     }
@@ -59,6 +60,7 @@ impl Options {
 
 impl OptionsBuilder {
     /// Construct a new [`OptionsBuilder`].
+    #[must_use]
     pub fn new() -> Self {
         Self(Options {
             start: None,
@@ -99,6 +101,7 @@ impl OptionsBuilder {
     }
 
     /// Finish building the [`Options`] object.
+    #[must_use]
     pub fn build(self) -> Options {
         self.0
     }
