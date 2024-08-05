@@ -29,6 +29,7 @@ enum Expiration {
 ///
 /// [builder]: https://rust-unofficial.github.io/patterns/patterns/creational/builder.html
 #[derive(Debug, PartialEq, Clone)]
+#[allow(clippy::module_name_repetitions)]
 pub struct OptionsBuilder(Options);
 
 #[derive(Serialize)]
@@ -105,6 +106,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn comment(mut self, comment: impl Into<String>) -> Self {
         self.0.comment = comment.into();
         self
@@ -138,6 +140,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn tag<'a>(mut self, tags: impl IntoIterator<Item = &'a str>) -> Self {
         self.0.tags.extend(tags.into_iter().map(String::from));
         self
@@ -168,6 +171,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn scopes<'a>(mut self, scopes: impl IntoIterator<Item = &'a str>) -> Self {
         self.0.scopes.extend(scopes.into_iter().map(String::from));
         self
@@ -201,6 +205,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn expiration_date(mut self, expiration_date: impl Into<String>) -> Self {
         self.0.expiration = Some(Expiration::ExpirationDate(expiration_date.into()));
         self

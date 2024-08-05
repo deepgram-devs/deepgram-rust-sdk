@@ -101,6 +101,7 @@ impl OptionsBuilder {
     ///     .start("1970-01-01")
     ///     .build();
     /// ```
+    #[must_use]
     pub fn start(mut self, start: impl Into<String>) -> Self {
         self.0.start = Some(start.into());
         self
@@ -117,6 +118,7 @@ impl OptionsBuilder {
     ///     .end("2038-01-19")
     ///     .build();
     /// ```
+    #[must_use]
     pub fn end(mut self, end: impl Into<String>) -> Self {
         self.0.end = Some(end.into());
         self

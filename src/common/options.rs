@@ -644,6 +644,7 @@ pub enum Multichannel {
 /// The Callback feature can be set when making the request by calling [`Transcription::prerecorded_callback`](crate::Transcription::prerecorded_callback).
 ///
 /// [builder]: https://rust-unofficial.github.io/patterns/patterns/creational/builder.html
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, PartialEq, Clone)]
 pub struct OptionsBuilder(Options);
 
@@ -876,6 +877,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn redact(mut self, redact: impl IntoIterator<Item = Redact>) -> Self {
         self.0.redact.extend(redact);
         self
@@ -1094,6 +1096,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn multichannel_with_models(mut self, models: impl IntoIterator<Item = Model>) -> Self {
         if let Some(Multichannel::ModelPerChannel {
             models: Some(old_models),
@@ -1188,6 +1191,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn search<'a>(mut self, search: impl IntoIterator<Item = &'a str>) -> Self {
         self.0.search.extend(search.into_iter().map(String::from));
         self
@@ -1249,6 +1253,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn replace(mut self, replace: impl IntoIterator<Item = Replace>) -> Self {
         self.0.replace.extend(replace);
         self
@@ -1289,6 +1294,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn keywords<'a>(mut self, keywords: impl IntoIterator<Item = &'a str>) -> Self {
         let iter = keywords.into_iter().map(|keyword| Keyword {
             keyword: keyword.into(),
@@ -1361,6 +1367,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn keywords_with_intensifiers(
         mut self,
         keywords: impl IntoIterator<Item = Keyword>,
@@ -1478,6 +1485,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn tag<'a>(mut self, tag: impl IntoIterator<Item = &'a str>) -> Self {
         self.0.tags.extend(tag.into_iter().map(String::from));
         self
@@ -1527,6 +1535,7 @@ impl OptionsBuilder {
     ///     .build();
     ///
     /// ```
+    #[must_use]
     pub fn query_params(mut self, params: impl IntoIterator<Item = (String, String)>) -> Self {
         self.0.query_params.extend(params);
         self
@@ -1711,6 +1720,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn custom_intents(
         mut self,
         custom_intent: impl IntoIterator<Item = impl Into<String>>,
@@ -1790,6 +1800,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn custom_topics(
         mut self,
         custom_topic: impl IntoIterator<Item = impl Into<String>>,
@@ -1955,6 +1966,7 @@ impl<'a> SerializableOptions<'a> {
 }
 
 impl Serialize for SerializableOptions<'_> {
+    #[allow(clippy::too_many_lines)]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,

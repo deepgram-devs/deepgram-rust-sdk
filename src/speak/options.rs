@@ -167,6 +167,7 @@ pub struct Options {
 ///
 /// [builder]: https://rust-unofficial.github.io/patterns/patterns/creational/builder.html
 #[derive(Debug, PartialEq, Clone)]
+#[allow(clippy::module_name_repetitions)]
 pub struct OptionsBuilder(Options);
 
 #[derive(Debug, PartialEq, Clone)]

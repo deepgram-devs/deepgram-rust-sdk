@@ -120,6 +120,7 @@ impl OptionsBuilder {
     ///     .start("1970-01-01")
     ///     .build();
     /// ```
+    #[must_use]
     pub fn start(mut self, start: impl Into<String>) -> Self {
         self.0.start = Some(start.into());
         self
@@ -136,6 +137,7 @@ impl OptionsBuilder {
     ///     .end("2038-01-19")
     ///     .build();
     /// ```
+    #[must_use]
     pub fn end(mut self, end: impl Into<String>) -> Self {
         self.0.end = Some(end.into());
         self
@@ -152,6 +154,7 @@ impl OptionsBuilder {
     ///     .accessor("12345678-1234-1234-1234-1234567890ab")
     ///     .build();
     /// ```
+    #[must_use]
     pub fn accessor(mut self, accessor: impl Into<String>) -> Self {
         self.0.accessor = Some(accessor.into());
         self
@@ -185,6 +188,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn tag<'a>(mut self, tag: impl IntoIterator<Item = &'a str>) -> Self {
         self.0.tags.extend(tag.into_iter().map(String::from));
         self
@@ -218,6 +222,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn method(mut self, method: impl IntoIterator<Item = Method>) -> Self {
         self.0.methods.extend(method);
         self
@@ -257,6 +262,7 @@ impl OptionsBuilder {
     ///
     /// assert_eq!(options1, options2);
     /// ```
+    #[must_use]
     pub fn model<'a>(mut self, model: impl IntoIterator<Item = &'a str>) -> Self {
         self.0.models.extend(model.into_iter().map(String::from));
         self

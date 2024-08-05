@@ -14,7 +14,10 @@ use std::{
     marker::PhantomData,
     path::Path,
     pin::Pin,
-    sync::Arc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     task::{Context, Poll},
     time::Duration,
 };
@@ -125,14 +128,11 @@ impl Stream for FileChunker {
                 Poll::Ready(next) => match next.transpose() {
                     Err(e) => return Poll::Ready(Some(Err(DeepgramError::from(e)))),
                     Ok(None) => {
-                        if this.buf.is_empty() {
-                            return Poll::Ready(None);
+                        return if this.buf.is_empty() {
+                            Poll::Ready(None)
                         } else {
-                            return Poll::Ready(Some(Ok(this
-                                .buf
-                                .split_to(this.buf.len())
-                                .freeze())));
-                        }
+                            Poll::Ready(Some(Ok(this.buf.split_to(this.buf.len()).freeze())))
+                        };
                     }
                     Ok(Some(next)) => {
                         this.buf.extend_from_slice(&next);
@@ -332,9 +332,10 @@ impl<'a> StreamRequestBuilder<'a> {
         let task = async move {
             while let Some(frame) = chunker.next().await {
                 tokio::time::sleep(frame_delay).await;
-                // This unwrap() is safe because application logic dictates that the Receiver won't
-                // be dropped before the Sender.
-                tx.send(frame).await.unwrap();
+                if tx.send(frame).await.is_err() {
+                    // Receiver was dropped
+                    break;
+                }
             }
         };
         tokio::spawn(task);
@@ -361,6 +362,7 @@ where
     S: Stream<Item = std::result::Result<Bytes, E>> + Send + Unpin + 'static,
     E: Error + Debug + Send + Unpin + 'static,
 {
+    #[allow(clippy::too_many_lines)]
     pub async fn start(self) -> Result<Receiver<Result<StreamResponse>>> {
         let url = self.builder.as_url()?;
         let mut source = self
@@ -389,47 +391,56 @@ where
         let write = Arc::new(Mutex::new(write));
         let (mut tx, rx) = mpsc::channel::<Result<StreamResponse>>(1);
 
+        let is_done = Arc::new(AtomicBool::new(false));
+
         // Spawn the keep-alive task
         if self.builder.keep_alive.unwrap_or(false) {
-            {
-                let write_clone = Arc::clone(&write);
-                tokio::spawn(async move {
-                    let mut interval = time::interval(Duration::from_secs(10));
-                    loop {
-                        interval.tick().await;
-                        let keep_alive_message =
-                            Message::Text("{\"type\": \"KeepAlive\"}".to_string());
-                        let mut write = write_clone.lock().await;
-                        if let Err(e) = write.send(keep_alive_message).await {
-                            eprintln!("Error Sending Keep Alive: {e:?}");
-                            break;
-                        }
-                    }
-                })
-            };
-        }
-
-        let write_clone = Arc::clone(&write);
-        let send_task = async move {
-            while let Some(frame) = source.next().await {
-                match frame {
-                    Ok(frame) => {
-                        let mut write = write_clone.lock().await;
-                        if let Err(e) = write.send(frame).await {
-                            println!("Error sending frame: {e:?}");
-                            break;
-                        }
-                    }
-                    Err(e) => {
-                        println!("Error receiving from source: {e:?}");
-                        break;
+            let is_done = Arc::clone(&is_done);
+            let mut tx = tx.clone();
+            let write_clone = Arc::clone(&write);
+            tokio::spawn(async move {
+                let mut interval = time::interval(Duration::from_secs(10));
+                while !is_done.load(Ordering::Acquire) {
+                    interval.tick().await;
+                    let keep_alive_message = Message::Text("{\"type\": \"KeepAlive\"}".to_string());
+                    let mut write = write_clone.lock().await;
+                    if let Err(e) = write.send(keep_alive_message).await {
+                        if tx.send(Err(e.into())).await.is_err() {
+                            is_done.store(true, Ordering::Release);
+                        };
                     }
                 }
-            }
+            });
+        }
 
-            let mut write = write_clone.lock().await;
-            if let Err(e) = write.send(Message::binary([])).await {
-                println!("Error sending final frame: {e:?}");
+        let send_task = {
+            let write = Arc::clone(&write);
+            let mut tx = tx.clone();
+            let is_done = Arc::clone(&is_done);
+            async move {
+                while let Some(frame) = source.next().await {
+                    match frame {
+                        Ok(frame) => {
+                            let mut write = write.lock().await;
+                            if let Err(e) = write.send(frame).await {
+                                if tx.send(Err(e.into())).await.is_err() {
+                                    is_done.store(true, Ordering::Release);
+                                }
+
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Error receiving from source: {e:?}");
+                            break;
+                        }
+                    }
+                }
+
+                let mut write = write.lock().await;
+                if let Err(e) = write.send(Message::binary([])).await {
+                    let _ = tx.send(Err(e.into())).await;
+                }
+                is_done.store(true, Ordering::Release);
             }
         };
 
@@ -438,16 +449,23 @@ where
                 match read.next().await {
                     None => break,
                     Some(Ok(msg)) => {
-                        if let Message::Text(txt) = msg {
-                            let resp = serde_json::from_str(&txt).map_err(DeepgramError::from);
-                            tx.send(resp)
-                                .await
-                                // This unwrap is probably not safe.
-                                .unwrap();
+                        match msg {
+                            Message::Text(txt) => {
+                                let resp = serde_json::from_str(&txt).map_err(DeepgramError::from);
+                                if tx.send(resp).await.is_err() {
+                                    // Receiver was dropped
+                                    break;
+                                }
+                            }
+                            Message::Close(_) => {
+                                is_done.store(true, Ordering::Release);
+                                break;
+                            }
+                            _ => {}
                         }
                     }
-                    Some(e) => {
-                        let _ = dbg!(e);
+                    Some(Err(e)) => {
+                        let _ = tx.send(Err(e.into())).await;
                         break;
                     }
                 }

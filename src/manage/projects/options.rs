@@ -21,6 +21,7 @@ pub struct Options {
 ///
 /// [builder]: https://rust-unofficial.github.io/patterns/patterns/creational/builder.html
 #[derive(Debug, PartialEq, Clone)]
+#[allow(clippy::module_name_repetitions)]
 pub struct OptionsBuilder(Options);
 
 #[derive(Serialize)]
@@ -81,6 +82,8 @@ impl OptionsBuilder {
     ///     .name("The Transcribinator")
     ///     .build();
     /// ```
+    ///
+    #[must_use]
     pub fn name(mut self, name: impl Into<String>) -> Self {
         self.0.name = Some(name.into());
         self
@@ -97,6 +100,7 @@ impl OptionsBuilder {
     ///     .company("Doofenshmirtz Evil Incorporated")
     ///     .build();
     /// ```
+    #[must_use]
     pub fn company(mut self, company: impl Into<String>) -> Self {
         self.0.company = Some(company.into());
         self
@@ -119,7 +123,6 @@ impl<'a> From<&'a Options> for SerializableOptions<'a> {
     fn from(options: &'a Options) -> Self {
         // Destructuring it makes sure that we don't forget to use any of it
         let Options { name, company } = options;
-
         Self { name, company }
     }
 }
