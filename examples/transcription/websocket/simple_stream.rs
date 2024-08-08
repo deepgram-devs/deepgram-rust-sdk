@@ -13,7 +13,7 @@ static AUDIO_CHUNK_SIZE: usize = 3174;
 
 #[tokio::main]
 async fn main() -> Result<(), DeepgramError> {
-    let dg = Deepgram::new(env::var("DEEPGRAM_API_KEY").unwrap());
+    let dg = Deepgram::new(env::var("DEEPGRAM_API_KEY").unwrap()).unwrap();
 
     let options = Options::builder()
         .smart_format(true)
@@ -33,8 +33,6 @@ async fn main() -> Result<(), DeepgramError> {
         .vad_events(true)
         .no_delay(true)
         .file(PATH_TO_FILE, AUDIO_CHUNK_SIZE, Duration::from_millis(16))
-        .await?
-        .start()
         .await?;
 
     while let Some(result) = results.next().await {

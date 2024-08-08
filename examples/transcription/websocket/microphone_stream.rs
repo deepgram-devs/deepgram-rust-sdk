@@ -90,7 +90,7 @@ fn microphone_as_stream() -> FuturesReceiver<Result<Bytes, RecvError>> {
 
 #[tokio::main]
 async fn main() -> Result<(), DeepgramError> {
-    let dg = Deepgram::new(env::var("DEEPGRAM_API_KEY").unwrap());
+    let dg = Deepgram::new(env::var("DEEPGRAM_API_KEY").unwrap()).unwrap();
 
     let mut results = dg
         .transcription()
@@ -102,7 +102,6 @@ async fn main() -> Result<(), DeepgramError> {
         // TODO Specific to my machine, not general enough example.
         .channels(2)
         .stream(microphone_as_stream())
-        .start()
         .await?;
 
     while let Some(result) = results.next().await {
